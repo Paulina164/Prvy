@@ -18,7 +18,7 @@ str(seiz1)
 summary(seiz1)
 ```
 
-Ďalej som dáta vyzualizovala. Najprv pomocou spojníc počtov epileptických záchvatov bez liečby a počas podávania nového lieku, no tento graf je neprehľadný, preto som použila aj bodový graf, na ktorom vidieť, že u väčšiny pacientov počet epileptických záchvatov klesol. 
+Ďalej som dáta vizualizovala. Najprv pomocou spojníc počtov epileptických záchvatov bez liečby a počas podávania nového lieku, no tento graf je neprehľadný, preto som použila aj bodový graf, na ktorom vidieť, že u väčšiny pacientov počet epileptických záchvatov klesol. 
 ```{r}
 ggplot(seiz1, aes(x = Case, y = NumberSeizures, group = X__1, colour = X__1)) +
   geom_point() + 
@@ -30,7 +30,7 @@ ggplot(seiz1, aes(sample = NumberSeizures, group = Case, colour = Case)) +
 ```
 
 
-Či je pokles štatisticky vznamný, otestujeme. Najprv zistíme či naše dáta majú normálne rozdelenie.
+Či je pokles štatisticky významný, otestujeme. Najprv zistíme či naše dáta majú normálne rozdelenie.
 
 ```{r}
 ggplot(seiz1, aes(x = Case, y = NumberSeizures, color = Case)) + 
