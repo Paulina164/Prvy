@@ -133,7 +133,7 @@ median(Data1$Eff)
 sd(Data1$Eff)
 ```
 
-Zaulímalo by nás či náhodou účinnosť lieku nezávisí od počtu epileptických záchvatov pacienta pred liečbou (Case_Base). Vizuálne z grafu závislosti sa to posúdiť nedá:
+3.Zaulímalo by nás či náhodou účinnosť lieku nezávisí od počtu epileptických záchvatov pacienta pred liečbou (Case_Base). Vizuálne z grafu závislosti sa to posúdiť nedá:
 ```{r}
 ggplot(data = Data1) +
   geom_point(mapping = aes(x = Eff, y = Case_Base))
