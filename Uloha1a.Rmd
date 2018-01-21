@@ -1,0 +1,182 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+Na internete som našla dáta vývoja nového lieku na eilepsiu. 30 epileptikov monitorovali najprv 8 týždňov bez podávania akýchkoľvek liekov a zaznámenávali počet epileptických záchvatov jednotlivých pacientov (Base). Ďalších 8 týždňov týmto pacientom podávali nový liek a taktiež zaznamenávali počet epileptických záchvatov (Treatment).
+Dáta som načítala z GitHub.
+```{r}
+library(tidyverse)
+library(readr)
+seiz1 <- read_delim("https://raw.githubusercontent.com/Paulina164/Prvy/master/seiz1.csv", 
+    "\t", escape_double = FALSE, trim_ws = TRUE)
+View(seiz1)
+
+str(seiz1)
+
+summary(seiz1)
+```
+
+Ďalej som dáta vizualizovala. Najprv pomocou spojníc počtov epileptických záchvatov bez liečby a počas podávania nového lieku, no tento graf je neprehľadný, preto som použila aj bodový graf, na ktorom vidieť, že u väčšiny pacientov počet epileptických záchvatov klesol. 
+```{r}
+ggplot(seiz1, aes(x = Case, y = NumberSeizures, group = X__1, colour = X__1)) +
+  geom_point() + 
+  geom_line()
+```
+```{r}
+ggplot(seiz1, aes(sample = NumberSeizures, group = Case, colour = Case)) + 
+  geom_qq()
+```
+
+
+Či je pokles štatisticky významný, otestujeme. Najprv zistíme či naše dáta majú normálne rozdelenie.
+
+```{r}
+ggplot(seiz1, aes(x = Case, y = NumberSeizures, color = Case)) + 
+  geom_boxplot(aes()) + 
+  geom_jitter(width = 0.3)
+```
+```{r}
+group_fit <- lm(NumberSeizures ~ Case, data = seiz1)
+summary(group_fit)
+plot(group_fit)
+
+```
+
+```
+
+```
+
+Dáta nemajú normálne rozdelenie, preto použijeme neparametrický Wilcoxon-Mann-Whitney test. Najprv dáta rozdelíme do stĺpcov na počet epileptických záchvatov pred liečbou a počas užívania lieku. 
+
+```{r}
+seiz1 %>% spread(key = Case, value = NumberSeizures, sep = "_") -> Data
+Data
+```
+
+Dáta si zvizualizujeme oproti sebe.
+```{r}
+lims <- c(min(seiz1$NumberSeizures, na.rm = T), max(seiz1$NumberSeizures, na.rm = T)) 
+plot1 <-
+    ggplot(Data, aes(x = Case_Base, y = Case_Treatment)) +
+    geom_point() +
+    geom_abline() +
+    scale_x_continuous("Base", limits = lims) +
+    scale_y_continuous("Treatment", limits = lims) +
+    theme(aspect.ratio = 1)
+plot1
+```
+
+a otestujeme.
+```{r}
+wilcox.test(Data$Case_Base, Data$Case_Treatment, paired = TRUE, alternative = "greater", exact = FALSE)        
+```
+
+
+p-value = 0.01908 preto rozdiel medzi skupinami je štatisticky významný a nový liek znižuje počet epileptických záchvatov u pacientov.
+
+
+
+
+
+2. Dáta sa pokúsime znormalizovať pomocou prirodzeného logaritmu:
+```{r}
+seiz2 <- mutate(seiz1,
+       Log = log(NumberSeizures, base = exp(1)),
+       Rlog = signif(Log, digits = 3)
+      )
+seiz2 <- filter(seiz2, Log > 0)
+seiz2 <- select(seiz2, X__1, Case, Rlog)
+seiz2
+
+ggplot(seiz2, aes(x = Case, y = Rlog, color = Case)) + 
+  geom_boxplot(aes()) + 
+  geom_jitter(width = 0.3)
+
+
+group_fit1 <- lm(Rlog ~ Case, data = seiz2, na.action=na.omit)
+summary(group_fit1)
+plot(group_fit1)
+
+```
+```{r}
+seiz2 %>% spread(key = Case, value = Rlog, sep = "_") -> Data1
+Data1
+
+```
+
+A keďže sú už normálne rozdelené, tak otestovať t-testom:
+```{r}
+
+group_test <- t.test(Data1$Case_Base, Data1$Case_Treatment, paired = T)
+group_test
+orig_t = group_test$statistic
+orig_t
+
+```
+
+
+1. Keďže pacienta zaujíma aj učinnosť lieku, pridali sme stĺpec s percentuálnym vyjadrením o koľko percent liek zredukoval počet epileptických záchvatov. (záporná účinnosť znamená, že počas liečby sa pacientovi zvýšil počet epileptických záchvatov)
+
+```{r}
+Data1 <- mutate(Data, 
+       Eff = (1- (Case_Treatment / Case_Base)))
+Data1 <- arrange(Data1, Case_Base)
+Data1
+
+```
+A zistili median a SD:
+```{r}
+median(Data1$Eff)
+sd(Data1$Eff)
+```
+
+Zaulímalo by nás či náhodou účinnosť lieku nezávisí od počtu epileptických záchvatov pacienta pred liečbou (Case_Base). Vizuálne z grafu závislosti sa to posúdiť nedá:
+```{r}
+ggplot(data = Data1) +
+  geom_point(mapping = aes(x = Eff, y = Case_Base))
+```
+
+Preto sme pacientov rozdelili do 3 skupín podľa počtu epileptických záchvatov za 8 týždňov pred liečbou:
+1. Case_Base = 7-18
+2. Case_Base = 19-32
+3. Case_Base = 36-76
+
+
+```{r}
+Table1 <- filter(Data1, Case_Base < 18)
+Table1
+Table2 <- filter(Data1, Case_Base < 33, Case_Base > 18 )
+Table2
+Table3 <- filter(Data1, 34 < Case_Base)
+Table3
+```
+V 1. skupine má liek najmenšiu účinnosť
+```{r}
+median(Table1$Eff)
+sd(Table1$Eff)
+```
+V 2. skupine má liek najväčšiu účinnosť, ale aj najväčšiu SD
+```{r}
+median(Table2$Eff)
+sd(Table2$Eff)
+```
+3. skupina:
+```{r}
+median(Table3$Eff)
+sd(Table3$Eff)
+```
+
+Liek je najvhodnejší pre epileptikov s 10-16 epileptickými záchvatmi za mesiac, kedy môže počet záchvatov znížiť do 50%. 
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
